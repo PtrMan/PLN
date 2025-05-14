@@ -77,3 +77,19 @@
    (stv (- 1.0 $s) $c)
 )
 
+
+
+
+(= (Truth_transitiveSimilarity (stv $sA $ca) (stv $sB $cB) (stv $sC $cC) (stv $sAB $cAB) (stv $sBC $cBC) (stv $sAC $cAC))
+   ; compute strength
+   ; see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/formulas.scm#L166
+   (let
+        (($T1 (/ (* (+ 1 (/ $sB $sA)) ($sAB)) (+ 1 $sAB)))
+         ($T2 (/ (* (+ 1 (/ $sC $sB)) ($sBC)) (+ 1 $sBC)))
+         ($T3 (/ (* (+ 1 (/ $sB $sC)) ($sBC)) (+ 1 $sBC)))
+         ($T4 (/ (* (+ 1 (/ $sA $sB)) ($sAB)) (+ 1 $sAB)))
+         ($sConcl (invert (- (+ (invert (+ (* $T1 $T2) (* (negate $T1) (/ (- $sC (* $sB $T2)) (negate $sB)))))
+                      (invert (+ (* $T3 $T4) (* (negate $T3) (/ (- $sC (* $sB $T4)) (negate $sB)))))) 1.0))))
+            (stv  $sConcl  (min $cAB $cBC))
+   )
+)

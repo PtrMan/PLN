@@ -23,3 +23,12 @@
 
 (= (TupleConcat $Ev1 $Ev2)
    (collapse (superpose ((superpose $Ev1) (superpose $Ev2)))))
+
+
+; from OpenCOG classic
+(= (negate $v)
+   (- 1.0 $v))
+
+; from OpenCOG classic
+(= (invert $v)
+   (/ 1.0 $v))

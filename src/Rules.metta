@@ -81,3 +81,12 @@
        ($x (Truth_negationElimination $t))
 )
 
+
+; TransitiveSimilarityRule
+; see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/transitive-similarity.scm
+; TODO LOW : extend to other link types
+;(= (|- (((Similarity (Concept $A) (Concept $B)) $T_AB)
+;        ((Similarity (Concept $B) (Concept $C)) $T_BC)))
+;   ((Similarity (Concept $A) (Concept $C)) (Truth_TransitiveSimilarity (STV $A) (STV $B) (STV $C) $T_AB $T_BC))
+;)
+
