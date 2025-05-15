@@ -97,6 +97,19 @@
 
 
 
+;; InversionRule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/inversion.scm
+;;
+;; <LinkType>
+;;   A
+;;   B
+;; |-
+;; <LinkType>
+;;   B
+;;   A
+;;
+; TODO LOW : implement and use inversion-consistency as Guardcondition
+(= (|- ((Inheritance (Concept $A) (Concept $B)) $tv)
+   ((Inheritance (Concept $B) (Concept $A)) $tv)))
 
 
 ; OrBreakdownRule   see https://github.com/hansonrobotics/opencog/blob/aec9b1f267ebad0962dabd1fc34f1bdfcae938ee/opencog/pln/rules/or-breakdown-rule.scm
