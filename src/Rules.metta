@@ -61,12 +61,12 @@
 ; negation introduction
 ; takes only one premise (is unary)
 ; implemented as binary, 2nd premise is ignored
-(= (|- ($x $t) ($dummyTerm $dummyTruth))
-       ; CONTROL : don't derive if it is already a NotLink
-       (If (not (== $x (NotLink $_)))
-              ((NotLink $x) (Truth_negationIntroduction $t))
-       )
-)
+;(= (|- ($x $t) ($dummyTerm $dummyTruth))
+;       ; CONTROL : don't derive if it is already a NotLink
+;       (If (not (== $x (NotLink $_)))
+;              ((NotLink $x) (Truth_negationIntroduction $t))
+;       )
+;)
 
 ; manual test
 ; !(println (|- (ZZZ (stv 0.5 0.5)) (ZZZb (stv 0.5 0.5)) ))
@@ -85,8 +85,8 @@
 ; TransitiveSimilarityRule
 ; see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/transitive-similarity.scm
 ; TODO LOW : extend to other link types
-;(= (|- (((Similarity (Concept $A) (Concept $B)) $T_AB)
-;        ((Similarity (Concept $B) (Concept $C)) $T_BC)))
-;   ((Similarity (Concept $A) (Concept $C)) (Truth_TransitiveSimilarity (STV $A) (STV $B) (STV $C) $T_AB $T_BC))
-;)
+(= (|- (((Similarity (Concept $A) (Concept $B)) $T_AB)
+        ((Similarity (Concept $B) (Concept $C)) $T_BC)))
+   ((Similarity (Concept $A) (Concept $C)) (Truth_transitiveSimilarity (STV $A) (STV $B) (STV $C) $T_AB $T_BC))
+)
 
