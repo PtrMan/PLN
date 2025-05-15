@@ -216,3 +216,88 @@
 
 
 
+
+
+
+
+
+
+
+
+; Or Introduction Rule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/or-introduction.scm
+; --- Or Introduction Rules ---
+;
+; useful only for Higher-order Inference (HoI)
+; COMMENTED because only useful for HoI and HoI isn't yet done
+
+; To handle the (Not (IdenticalLink ...)) condition, we use (Not (Equal $Atom1 $Atom2)).
+; (Equal $X $Y) would be a predicate that is True if $X and $Y are identical atoms, False otherwise.
+; (Not $TruthValue) would invert True/False.
+; These are assumed to be evaluable as part of premise matching or via a grounded 'eval' mechanism.
+
+; Case 1: A is Concept, B is Concept
+;(= (|- (((Concept $A_val) $tvA)
+;        ((Concept $B_val) $tvB)
+; ;        (Not (Equal (Concept $A_val) (Concept $B_val))))) ; Premise: A and B are not identical
+;   ))
+;   ((Or (Concept $A_val) (Concept $B_val))
+;    (Truth_OrIntroduction $tvA $tvB)))
+
+; Case 2: A is Predicate, B is Predicate
+;(= (|- (((Predicate $A_val) $tvA)
+;        ((Predicate $B_val) $tvB)
+; ;        (Not (Equal (Predicate $A_val) (Predicate $B_val)))))
+;   ))
+;   ((Or (Predicate $A_val) (Predicate $B_val))
+;    (Truth_OrIntroduction $tvA $tvB)))
+
+; Case 3: A is Concept, B is Predicate
+;(= (|- (((Concept $A_val) $tvA)
+;        ((Predicate $B_val) $tvB)
+;        ; (Not (Equal (Concept $A_val) (Predicate $B_val))) is structurally true
+;        ; if Concept and Predicate are distinct wrappers.
+;        ; However, keeping it for explicitness, though it might always be true.
+; ;        (Not (Equal (Concept $A_val) (Predicate $B_val)))))
+;   ))
+;   ((Or (Concept $A_val) (Predicate $B_val))
+;    (Truth_OrIntroduction $tvA $tvB)))
+
+; Case 4: A is Predicate, B is Concept
+; This is symmetric to Case 3. If the MeTTa matching engine or subsequent
+; processing handles commutativity of premises for OR, this might be redundant.
+; However, for completeness:
+;(= (|- (((Predicate $A_val) $tvA)
+;        ((Concept $B_val) $tvB)
+; ;        (Not (Equal (Predicate $A_val) (Concept $B_val)))))
+;   ))
+;   ((Or (Predicate $A_val) (Concept $B_val))
+;    (Truth_OrIntroduction $tvA $tvB)))
+
+
+
+
+
+
+
+
+; And Introduction Rule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/and-introduction.scm
+; --- And Introduction Rule ---
+; useful only for Higher-order Inference (HoI)
+; COMMENTED because only useful for HoI and HoI isn't yet done
+
+; We use an auxiliary function to handle the conditional logic for $A != $B,
+; as direct conditional premises in `|-` are not standard in basic MeTTa.
+; The function returns the new AndLink with its TV, or Empty if $A == $B.
+;(= (ApplyAndIntroduction $A $tvA $B $tvB)
+;   (if (≠ $A $B)  ; Assuming (≠ $X $Y) is a built-in or defined equality check
+;       ((And $A $B) (Truth_And $tvA $tvB))
+;       Empty      ; Represents no new atom if $A is identical to $B
+;   )
+;)
+
+; The main declarative rule:
+; If $A has $tvA and $B has $tvB, then the result of ApplyAndIntroduction is asserted.
+; The MeTTa interpreter would typically only add non-Empty results to the atomspace.
+;(= (|- ($A $tvA)
+;       ($B $tvB))
+;   (ApplyAndIntroduction $A $tvA $B $tvB))

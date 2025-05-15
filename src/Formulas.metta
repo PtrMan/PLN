@@ -215,3 +215,23 @@
 
 
 
+
+
+
+
+; Or Introduction Rule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/or-introduction.scm
+; --- Or Introduction Truth Value Formula ---
+; Takes the truth values of A and B, returns the truth value for (Or A B).
+;(= (Truth_OrIntroduction (stv $sA $cA) (stv $sB $cB))
+;   (stv (- (+ $sA $sB) (* $sA $sB))  ; Strength: sA + sB - sA*sB
+;        (min $cA $cB)))             ; Confidence: min(cA, cB)
+
+
+
+; And Introduction Rule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/and-introduction.scm
+; --- Truth Value Calculation for Conjunction (And) ---
+; Takes the truth values of A and B, returns the truth value for (And A B).
+; $tvA = (stv $sA $cA)
+; $tvB = (stv $sB $cB)
+;(= (Truth_And (stv $sA $cA) (stv $sB $cB))
+;   (stv (* $sA $sB) (min $cA $cB)))
