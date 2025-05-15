@@ -90,3 +90,129 @@
    ((Similarity (Concept $A) (Concept $C)) (Truth_transitiveSimilarity (STV $A) (STV $B) (STV $C) $T_AB $T_BC))
 )
 
+
+
+
+
+
+
+
+
+
+; OrBreakdownRule   see https://github.com/hansonrobotics/opencog/blob/aec9b1f267ebad0962dabd1fc34f1bdfcae938ee/opencog/pln/rules/or-breakdown-rule.scm
+(= (|- ((Or $A $B) $tvOrAB)  ; Premise 1: (Or A B) with its TV
+       ($A $tvA))            ; Premise 2: A with its TV
+   ($B (Truth_OrBreakdown $tvOrAB $tvA))) ; Conclusion: B with calculated TV
+
+
+
+; SymmetricModusPonensRule   see https://github.com/hansonrobotics/opencog/blob/aec9b1f267ebad0962dabd1fc34f1bdfcae938ee/opencog/pln/rules/symmetric-modus-ponens-rule.scm
+; For SimilarityLink
+(= (|- (((Similarity (Concept $A) (Concept $B))) $tvAB)
+       (((Concept $A)) $tvA))
+   ((Concept $B)
+    (Truth_SymmetricModusPonens $tvA $tvAB)))
+
+; SymmetricModusPonensRule   see https://github.com/hansonrobotics/opencog/blob/aec9b1f267ebad0962dabd1fc34f1bdfcae938ee/opencog/pln/rules/symmetric-modus-ponens-rule.scm
+; For IntensionalSimilarityLink
+(= (|- (((IntensionalSimilarity (Concept $A) (Concept $B))) $tvAB)
+       (((Concept $A)) $tvA))
+   ((Concept $B)
+    (Truth_SymmetricModusPonens $tvA $tvAB)))
+
+; SymmetricModusPonensRule   see https://github.com/hansonrobotics/opencog/blob/aec9b1f267ebad0962dabd1fc34f1bdfcae938ee/opencog/pln/rules/symmetric-modus-ponens-rule.scm
+; For ExtensionalSimilarityLink
+(= (|- (((ExtensionalSimilarity (Concept $A) (Concept $B))) $tvAB)
+       (((Concept $A)) $tvA))
+   ((Concept $B)
+    (Truth_SymmetricModusPonens $tvA $tvAB)))
+
+
+; ImplicationImplicantConjunctionRule   see https://github.com/opencog/pln/blob/75815f9f21ad899f44eccba1921fa253a7c6216f/opencog/pln/rules/wip/implication-implicant-conjunction.scm
+; Implication Implicant Conjunction Rule
+; commented because we don't yet implement preconditions!
+; TODO MID : implement preconditions in deriver as some sort of lambda function call. Quote the code here
+;(= (|- (((Implication $A $C) $tvAC)                     ; Premise 1: (A => C) has TV $tvAC
+;        ((Implication $B $C) $tvBC)                     ; Premise 2: (B => C) has TV $tvBC
+;        (IsTrue (not ($A == $B)))))                     ; GuardCondition: A is not identical to B
+;                                                        ; (IsTrue ensures the condition must evaluate to True)
+;       ((Implication (And $A $B) $C)                    ; Conclusion: ((A & B) => C)
+;        (Truth_ImplicationImplicantConjunction (STV $A)  ; TV of the conclusion is calculated by this function
+;                                               (STV $B)
+;                                               (STV $C)
+;                                               $tvAC
+;                                               $tvBC)))
+;)
+
+
+; ImplicationImplicantDisjunctionRule   see https://github.com/opencog/pln/blob/75815f9f21ad899f44eccba1921fa253a7c6216f/opencog/pln/rules/wip/implication-implicant-disjunction.scm
+; --- Implication Implicant Disjunction Rule ---
+; ImplicationLink <TV1>
+;    A
+;    C
+; ImplicationLink <TV2>
+;    B
+;    C
+; |-
+; ImplicationLink <TV>
+;    OrLink
+;       A
+;       B
+;    C
+; Condition: A != B
+
+; In MeTTa, PredicateNode $A becomes (Predicate $A) or similar.
+; OrLink A B becomes (Or (Predicate $A) (Predicate $B))
+(= (|- ((Implication (Predicate $A) (Predicate $C)) $tvAC)    ; Premise 1: A => C
+       ((Implication (Predicate $B) (Predicate $C)) $tvBC)    ; Premise 2: B => C
+;       (, (match &self ($A $B) (if (== $A $B) (empty) $SUCCESS))) ; GuardCondition: A is not B
+    )
+   ((Implication (Or (Predicate $A) (Predicate $B)) (Predicate $C)) ; Conclusion: (A or B) => C
+    (Truth_ImplicationImplicantDisjunction (STV (Predicate $A))  ; Truth value of A
+                                           (STV (Predicate $B))  ; Truth value of B
+                                           $tvAC                 ; Truth value of A => C
+                                           $tvBC                 ; Truth value of B => C
+                                           )))
+   ; Note: The Scheme code retrieves (cog-mean C) but doesn't use it in the formula.
+   ; If it were needed, (STV (Predicate $C)) would be passed to Truth_ImplicationImplicantDisjunction.
+
+
+; EquivalenceToImplicationRule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/equivalence-to-implication.scm
+(= (|- ((Equivalence (Concept $A) (Concept $B)) (stv $sEQ $cEQ)) ; Premise 1: Match Equivalence and its TV
+;       (IsTrue (> $cEQ 0.0))                                    ; GuardCondition: Precondition: confidence of EQ > 0
+   )
+   ((Implication (Concept $A) (Concept $B))
+    (Truth_EquivalenceToImplication (STV (Concept $A))    ; Get STV of Concept A
+                                    (STV (Concept $B))    ; Get STV of Concept B
+                                    (stv $sEQ $cEQ)))     ; Pass STV of Equivalence premise
+)
+
+
+
+; ImplicationImplicantDisjunctionRule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/implication-implicant-disjunction.scm
+; --- Implication Implicant Disjunction Rule ---
+; ImplicationLink A C
+; ImplicationLink B C
+; A != B
+; |-
+; ImplicationLink (OrLink A B) C
+;
+; We assume $A, $B, $C are variables representing the core names/identifiers of concepts.
+; (Concept $A) constructs the actual concept atom.
+(= (|- ((Implication (Concept $A) (Concept $C)) $tvAC)      ; Premise 1: A => C
+       ((Implication (Concept $B) (Concept $C)) $tvBC)      ; Premise 2: B => C
+;       (Not (== $A $B))                                    ; GuardCondition: A is not identical to B
+   )
+   ((Implication (Or (Concept $A) (Concept $B)) (Concept $C)) ; Conclusion: (A or B) => C
+    (Truth_ImplicationImplicantDisjunction
+        (STV (Concept $A))  ; Truth value of Concept A
+        (STV (Concept $B))  ; Truth value of Concept B
+        (STV (Concept $C))  ; Truth value of Concept C
+        $tvAC               ; Truth value of premise A => C
+        $tvBC               ; Truth value of premise B => C
+    )))
+
+
+
+
+

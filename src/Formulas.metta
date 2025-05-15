@@ -93,3 +93,127 @@
             (stv  $sConcl  (min $cAB $cBC))
    )
 )
+
+
+
+
+; OrBreakdownRule   see https://github.com/hansonrobotics/opencog/blob/aec9b1f267ebad0962dabd1fc34f1bdfcae938ee/opencog/pln/rules/or-breakdown-rule.scm
+(= (Truth_OrBreakdown (stv $sOrAB $cOrAB) (stv $sA $cA))
+   (stv (/ $sOrAB (- 1.0 $sA))  ; Use 1.0 for floating point arithmetic
+        (min $cOrAB $cA)))
+
+
+; SymmetricModusPonensRule   see https://github.com/hansonrobotics/opencog/blob/aec9b1f267ebad0962dabd1fc34f1bdfcae938ee/opencog/pln/rules/symmetric-modus-ponens-rule.scm
+(= (Truth_SymmetricModusPonens (stv $sA $cA) (stv $sAB $cAB))
+   (let* (($s_notAB 0.2)  ; Hardcoded from the Scheme formula
+          ($c_notAB 1.0)) ; Hardcoded from the Scheme formula
+     (stv (+ (* $sA $sAB)
+             (* (* $s_notAB (negate $sA)) (+ 1.0 $sAB)))
+          (min (min $cAB $c_notAB) $cA))))
+
+
+(= (ImplicationImplicantConjunctionStrength $sC $sAC $sBC)
+   (min (/ (* $sAC $sBC) $sC) 1.0)) ; Capped at 1.0 as in Scheme
+
+(= (ImplicationImplicantConjunctionConfidence $cAC $cBC)
+   (min $cAC $cBC))
+
+; ImplicationImplicantConjunctionRule   see https://github.com/opencog/pln/blob/75815f9f21ad899f44eccba1921fa253a7c6216f/opencog/pln/rules/wip/implication-implicant-conjunction.scm
+; Implication Implicant Conjunction Rule
+(= (Truth_ImplicationImplicantConjunction (stv $sA $cA) (stv $sB $cB) (stv $sC $cC) (stv $sAC $cAC) (stv $sBC $cBC))
+   (let* (($strength-A $sA) ($strength-B $sB) ($strength-C $sC)
+          ($strength-AC $sAC) ($strength-BC $sBC)
+          ($conf-AC $cAC) ($conf-BC $cBC))
+     ; Conditional probability consistency checks:
+     ; P(C|A) <= P(C)/P(A)  =>  $sAC <= $sC / $sA
+     ; P(C|B) <= P(C)/P(B)  =>  $sBC <= $sC / $sB
+     ; Also ensure denominators are not zero for the checks.
+     (if (and (> $strength-A 0) (> $strength-B 0) (> $strength-C 0) ; Avoid division by zero and ensure meaningful probabilities
+              (<= $strength-AC (/ $strength-C $strength-A))
+              (<= $strength-BC (/ $strength-C $strength-B)))
+         (stv (ImplicationImplicantConjunctionStrength $strength-C $strength-AC $strength-BC)
+              (ImplicationImplicantConjunctionConfidence $conf-AC $conf-BC))
+         Empty ; Or another symbol indicating failure/conditions not met.
+               ; The rule interpreter should handle Empty TV by not adding the conclusion.
+     )
+   )
+)
+
+
+
+; --- Truth Value Calculation for Implication Implicant Disjunction ---
+;
+; Formula based on the Scheme *code*:
+; Numerator: P(C,A) + P(C,B) - P(C,A) * P(C,B) * P(A) * P(B)
+; Denominator: P(A) + P(B) - P(A)P(B)
+(= (ImplicationImplicantDisjunctionStrength_CODE $sA $sB $sAC $sBC)
+   (let* (($CinterA (* $sAC $sA))
+          ($CinterB (* $sBC $sB))
+          ($Numerator (+ $CinterA $CinterB (* $CinterA $CinterB $sA $sB -1.0)))
+          ($Denominator (+ $sA $sB (* $sA $sB -1.0))))
+     (if (== $Denominator 0.0) ; Avoid division by zero, return neutral/undefined strength
+         0.5 ; Or handle as error, or return specific STV like (stv 0.5 0.0)
+         (/ $Numerator $Denominator))))
+
+; Formula based on the Scheme *comment* (more standard probabilistic interpretation):
+; Numerator: P(C,A) + P(C,B) - P(C,A)P(C,B)  (assuming P(C,A,B) = P(C,A)P(C,B))
+; Denominator: P(A) + P(B) - P(A)P(B)
+;(= (ImplicationImplicantDisjunctionStrength_COMMENT $sA $sB $sAC $sBC)
+;   (let* (($CinterA (* $sAC $sA))
+;          ($CinterB (* $sBC $sB))
+;          ($Numerator (+ $CinterA $CinterB (* $CinterA $CinterB -1.0)))
+;          ($Denominator (+ $sA $sB (* $sA $sB -1.0))))
+;     (if (== $Denominator 0.0)
+;         0.5
+;         (/ $Numerator $Denominator))))
+
+; ImplicationImplicantDisjunctionRule   see https://github.com/opencog/pln/blob/75815f9f21ad899f44eccba1921fa253a7c6216f/opencog/pln/rules/wip/implication-implicant-disjunction.scm
+; We will use the _CODE version to match the provided Scheme code.
+(= (Truth_ImplicationImplicantDisjunction (stv $sA $cA) (stv $sB $cB) (stv $sAC $cAC) (stv $sBC $cBC))
+   (stv (ImplicationImplicantDisjunctionStrength_CODE $sA $sB $sAC $sBC)
+        (min $cAC $cBC)))
+
+
+; EquivalenceToImplicationRule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/equivalence-to-implication.scm
+; --- Equivalence to Implication Truth Value Formula ---
+; Inputs:
+;   $stvA: Truth value of Concept A (e.g., (stv $sA $cA))
+;   $stvB: Truth value of Concept B (e.g., (stv $sB $cB))
+;   $stvEQ: Truth value of (Equivalence A B) (e.g., (stv $sEQ $cEQ))
+(= (Truth_EquivalenceToImplication (stv $sA $cA) (stv $sB $cB) (stv $sEQ $cEQ))
+   (let* (($sAB (if (> (* $sEQ $cEQ) 0.99) ; Scheme: (< 0.99 (* sEQ cEQ))
+                   $sEQ
+                   (/ (* (+ 1.0 (/ $sB $sA)) $sEQ) (+ 1.0 $sEQ))
+               )))
+     (stv $sAB $cEQ) ; Confidence of conclusion is confidence of Equivalence premise
+   )
+)
+
+
+
+; --- Implication Implicant Disjunction Strength Formula ---
+; Corresponds to the arithmetic in implication-implicant-disjunction-side-effect-free-formula
+; Inputs: sA, sB (strengths of concepts A, B)
+;         sAC, sBC (strengths of implications A=>C, B=>C)
+(= (ImplicationImplicantDisjunctionStrength $sA $sB $sAC $sBC)
+   (let* (($CinterA (* $sAC $sA))
+          ($CinterB (* $sBC $sB))
+          ($Numerator (+ $CinterA $CinterB (* $CinterA $CinterB $sA $sB -1.0))) ; As per Scheme code
+          ; Alternative Numerator based on comment P(C,A,B)=P(C,A)P(C,B):
+          ; ($Numerator (+ $CinterA $CinterB (* $CinterA $CinterB -1.0)))
+          ($Denominator (+ $sA $sB (* $sA $sB -1.0))))
+     (if (== $Denominator 0.0) ; Avoid division by zero, return neutral or error
+         0.0 ; Or some other appropriate value like an Undefined STV
+         (/ $Numerator $Denominator))))
+
+; ImplicationImplicantDisjunctionRule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/implication-implicant-disjunction.scm
+; --- Truth Value Calculation for Implication Implicant Disjunction ---
+; Takes STVs of concepts A, B, C and STVs of premises (A => C), (B => C)
+(= (Truth_ImplicationImplicantDisjunction (stv $sA $cA) (stv $sB $cB) (stv $sC $cC) (stv $sAC $cAC) (stv $sBC $cBC))
+   (stv (ImplicationImplicantDisjunctionStrength $sA $sB $sAC $sBC)
+        (min $cAC $cBC)))
+        ; Note: $sC and $cC are passed (as C is extracted in Scheme) but $sC is not used in the strength formula.
+
+
+
+
