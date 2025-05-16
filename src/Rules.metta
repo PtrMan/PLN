@@ -301,3 +301,32 @@
 ;(= (|- ($A $tvA)
 ;       ($B $tvB))
 ;   (ApplyAndIntroduction $A $tvA $B $tvB))
+
+
+
+
+
+
+
+; SymmetricModusPonens rule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/symmetric-modus-ponens.scm
+(= (|- ($A $TruthA)
+       ((Similarity $A $B) $TruthAB))
+   ($B (Truth_SymmetricModusPonens $TruthA $TruthAB)))
+
+; SymmetricModusPonens rule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/symmetric-modus-ponens.scm
+(= (|- ($A $TruthA)
+       ((IntentionalSimilarity $A $B) $TruthAB))
+   ($B (Truth_SymmetricModusPonens $TruthA $TruthAB)))
+
+; SymmetricModusPonens rule   see https://github.com/opencog/pln/blob/master/opencog/pln/rules/wip/symmetric-modus-ponens.scm
+(= (|- ($A $TruthA)
+       ((ExtensionalSimilarity $A $B) $TruthAB))
+   ($B (Truth_SymmetricModusPonens $TruthA $TruthAB)))
+
+(= (Truth_SymmetricModusPonens (stv $sA $cA) (stv $sAB $cAB))
+   (let*
+      (($snotAB 0.2)
+       ($cnotAB 1.0))
+      (stv
+         (+ (* $sA $sAB) (* (* $snotAB (negate $sA)) (+ 1.0 $sAB))) 
+         (min (min $cAB $cnotAB) $cA))))
