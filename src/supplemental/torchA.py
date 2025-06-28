@@ -152,6 +152,11 @@ for itOuter in range(outerIterations):
 
 
 
+# export ML model
+torch.save(model.state_dict(), 'tvfnModelA.torchmodel')
+
+
+
 import numpy
 
 def arrFlatten(arg):
