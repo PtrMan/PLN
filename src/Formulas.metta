@@ -91,17 +91,31 @@
         (stv $ConclS $ABc)))
 
 
-(= (ImplicationImplicantConjunctionStrength $sC $sAC $sBC)
-   (min (/safe (* $sAC $sBC) $sC) 1.0))
+;(= (ImplicationImplicantConjunctionStrength $sC $sAC $sBC)
+;   (min (/safe (* $sAC $sBC) $sC) 1.0))
 
-(= (ImplicationImplicantConjunctionConfidence $cAC $cBC)
-   (min $cAC $cBC))
+;(= (ImplicationImplicantConjunctionConfidence $cAC $cBC)
+;   (min $cAC $cBC))
+
+
+; load NN python module
+!(bind! nn0 (py-atom nn0))
+
+
 
 ; Implication Implicant Conjunction Rule, see https://github.com/opencog/pln/blob/75815f9f21ad899f44eccba1921fa253a7c6216f/opencog/pln/rules/wip/implication-implicant-conjunction.scm
 (= (Truth_ImplicationImplicantConjunction (stv $As $Ac) (stv $Bs $Bc) (stv $Cs $Cc) (stv $ACs $ACc) (stv $BCs $BCc))   
-   (if (Consistency_ImplicationImplicantConjunction $As $Bs $Cs $ACs $BCs)
-       (stv (ImplicationImplicantConjunctionStrength $Cs $ACs $BCs)
-            (ImplicationImplicantConjunctionConfidence $ACc $BCc))
+   (if True ;(Consistency_ImplicationImplicantConjunction $As $Bs $Cs $ACs $BCs)
+       ; Preconditions are met
+       (let* (
+           ($ResNn   ((py-dot nn0 nnA (-> Number Number Number Number Number Number Expression)) $ACs (- 1.0 $ACs) $ACc $BCs (- 1.0 $BCs) $BCc) )
+           ; FIXME : use python array access to access values instead of car-atom and cdr-atom!
+           ($ConclS  ((py-dot $ResNn __getitem__) 0) );($ConclS  (car-atom $ResNn))
+           ($ConclC  ((py-dot $ResNn __getitem__) 1) );($ConclC  (cdr-atom $ResNn))
+          )
+          (stv $ConclS $ConclC)
+       )
+
        ; Preconditions are not met
        (stv 1 0)))
 
