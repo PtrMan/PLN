@@ -7,6 +7,8 @@ class M0(torch.nn.Module):
 
         dimHidden2 = 30
 
+        dimHidden2 = 14
+
         self.m0 = torch.nn.Parameter(torch.randn(dimInput, dimHidden) *  0.09)
         self.bias0 = torch.nn.Parameter(torch.randn(dimHidden) * 0.08)
 
@@ -21,8 +23,8 @@ class M0(torch.nn.Module):
         t0 = x
 
         t0 = t0 @ self.m0 + self.bias0
-        #t0 = torch.nn.functional.leaky_relu(t0, 0.001)
-        t0 = torch.nn.functional.softplus(t0)
+        t0 = torch.nn.functional.leaky_relu(t0, 0.001)
+        #t0 = torch.nn.functional.softplus(t0)
 
 
         t0 = t0 @ self.m1 + self.bias1
@@ -47,7 +49,7 @@ device = torch.device(dev)
 
 
 
-outerIterations = int(120000 * 5.5)
+outerIterations = int(120000 * 5.5     )
 
 #outerIterations = 5
 
@@ -56,6 +58,10 @@ dimHidden = 8 # 4 # 8
 
 # gives error down to 0.068
 dimHidden = 34 # 4 # 8
+
+
+
+dimHidden = 25
 
 
 # ?
@@ -102,8 +108,10 @@ datGen.samples.append(([0.8, 0.872, 0.8236, 0.362563], [0.27244, 0.49827]))
 # in the SGD constructor will contain the learnable parameters (defined
 # with torch.nn.Parameter) which are members of the model.
 criterion = torch.nn.MSELoss()
-#optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-3) # lossAvg=0.13041272716363878 @ 2m iterations
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.001) # loss avg=0.62 @ 2m iterations
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-3) # lossAvg=0.13041272716363878 @ 2m iterations
+optimizer = torch.optim.SGD(model.parameters(), lr=1e-3) # lossAvg=0.13041272716363878 @ 4m iterations
 
 lossAvg = None
 
