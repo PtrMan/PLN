@@ -1,22 +1,18 @@
-(= (STV (Concept X))
-   (stv 0.1 0.99))
+!(import! &self PLN)
 
-(= (STV (Concept heated))
-   (stv 0.1 0.99))
+(= (kbstatic)
+   ((sentence ((Concept X) (stv 0.1 0.99)) (0))
+    (sentence ((Concept heated) (stv 0.1 0.99)) (0))
+    (sentence ((Concept melted) (stv 0.1 0.99)) (0))
+    (sentence ((Concept pliable) (stv 0.1 0.99)) (0))
+    (sentence ((Concept madeOfPlastic) (stv 0.1 0.99)) (0))
+    (sentence ((Concept applyLighter) (stv 0.1 0.99)) (0))))
 
-(= (STV (Concept melted))
-   (stv 0.1 0.99))
+;takes 30 sec to compile (no reasoning happening here just preparing a fast PLN reasoner with the concepts and implications engraved)
+!(PLN.Init (kbstatic))
 
-(= (STV (Concept pliable))
-   (stv 0.1 0.99))
 
-(= (STV (Concept madeOfPlastic))
-   (stv 0.1 0.99))
-
-(= (STV (Concept applyLighter))
-   (stv 0.1 0.99))
-
-(= (kb)
+(= (kbdynamic)
    (
       ; If something is made of plastic, applying the lighter on it will make it heated
       (Sentence (
@@ -55,11 +51,9 @@
    )
 )
 
-!(Question (kb)
 
-; works
-          (Inheritance (Concept X) (Concept melted)) 3)
+!(Question (kbdynamic) (Inheritance (Concept X) (Concept melted)) 3)
 
-; doesnt work
+; doesnt work?
 ;           (Inheritance (Concept X) (Concept pliable)) 4)
 
