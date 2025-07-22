@@ -22,21 +22,21 @@
                (Inheritance (Concept $X) (Concept applyLighter))
                (Inheritance (Concept $X) (Concept heated))
             )
-         )   (stv 0.99 0.99))   (0) )
+         )   (stv 0.99 0.99))   (1) )
       
       ; if it's heated it will be melted
       (Sentence (
          (Implication 
             (Inheritance (Concept $X) (Concept heated))
             (Inheritance (Concept $X) (Concept melted))
-         )   (stv 0.99 0.99))   (1) )
+         )   (stv 0.99 0.99))   (2) )
 
       ; if it's melted it will be pliable
       (Sentence (
          (Implication 
             (Inheritance (Concept $X) (Concept melted))
             (Inheritance (Concept $X) (Concept pliable))
-         )   (stv 0.99 0.99))   (2) )
+         )   (stv 0.99 0.99))   (3) )
 
 
 
