@@ -7,9 +7,22 @@
 import scipy.stats
 
 import random
+import math
 
 def clamp(arg, minVal, maxVal):
     return max(min(arg, maxVal), minVal)
+
+
+# /param p probability of the actual distribution
+# /param q probability of the source distribution to learn
+def calcKlDivergenceSingle(p, q):
+
+    h = p/q
+    h = max(h, 1e-9)# HACK to avoid numerical error
+
+    return p*math.log(h)
+
+
 
 '''
 # compute alpha and beta of beta distribution given mean and standard-deviation
@@ -142,9 +155,14 @@ class FittingTarget(object):
 
             vTarget = scipy.stats.beta.pdf(x, fittingCurrentlyAlpha, fittingCurrentlyBeta)
 
-            errorSquared = (vConcl - vTarget)**2
-            errorSquared = float(errorSquared) # force python type
-            errorSum += errorSquared
+            ## old attempt with squared loss
+            #errorVal = (vConcl - vTarget)**2
+            #errorVal = float(errorVal) # force python type
+
+            # new attempt with loss based on KL-divergence
+            errorVal = calcKlDivergenceSingle(vTarget, vConcl)
+
+            errorSum += errorVal
 
             x += 0.1
             nSamplesCnt += 1
