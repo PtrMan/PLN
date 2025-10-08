@@ -5,9 +5,10 @@ class M0(torch.nn.Module):
     def __init__(self, dimInput, dimHidden, dimOutput):
         super(M0, self).__init__()
 
+        #dimHidden2 = 30
+        #dimHidden2 = 14
+        
         dimHidden2 = 30
-
-        dimHidden2 = 14
 
         self.m0 = torch.nn.Parameter(torch.randn(dimInput, dimHidden) *  0.09)
         self.bias0 = torch.nn.Parameter(torch.randn(dimHidden) * 0.08)
@@ -49,7 +50,8 @@ device = torch.device(dev)
 
 
 
-outerIterations = int(120000 * 5.5     )
+outerIterations = int(120000 * 5.5     ) # semi works
+outerIterations = int(120000 * 1.0     )
 
 #outerIterations = 5
 
@@ -60,12 +62,12 @@ dimHidden = 8 # 4 # 8
 dimHidden = 34 # 4 # 8
 
 
-
+# semi works
 dimHidden = 25
 
 
 # ?
-#dimHidden = 60
+dimHidden = 60
 
 
 
