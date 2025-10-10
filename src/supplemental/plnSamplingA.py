@@ -18,7 +18,11 @@ def clamp(arg, minVal, maxVal):
 def calcKlDivergenceSingle(p, q):
 
     h = p/q
-    h = max(h, 1e-9)# HACK to avoid numerical error
+    #h = max(h, 1e-9)# HACK to avoid numerical error
+    
+    # HACK to avoid numerical error
+    if h == 0.0:
+        return math.nan
 
     return p*math.log(h)
 
@@ -103,7 +107,87 @@ if False:
 
     exit(0)
 
+
+
+
 #########
+
+class BucketedDistribution(object):
+    def __init__(self):
+        pass
+	
+    def reset(self):
+        self.buckets = [0] * 500 # 200
+
+    def putSample(self, phi):
+        # add mass at probability "phi" for this sample
+
+        # phi is the chosen probability
+
+        bucketIdx = int(phi * (len(self.buckets)-1))
+        #print(bucketIdx) # DBG
+        self.buckets[bucketIdx] += 1
+
+    # compute distribution
+    def calcDistribution(self):
+
+        # compute mass
+        mass = 0
+        for iv in self.buckets:
+            mass += iv
+
+        phis = []
+
+        for bucketIdx in range(len(self.buckets)):
+            # compute probability at the bucketIdx
+            phi = float(self.buckets[bucketIdx]) / mass
+			
+            phis.append(phi)
+		
+        return phis
+
+
+# helper class to compute result distribution for a given input distributions 
+class CalcDistribution(object):
+    def __init__(self):
+        # beta distribution A
+        self.alphaA = 1.0
+        self.betaA = 1.0
+        
+        # beta distribution B
+        self.alphaB = 1.0
+        self.betaB = 1.0
+    
+    def init(self):
+        self.distr = BucketedDistribution()
+        self.distr.reset()
+    
+    def sampleAndStore(self):
+		
+        phiA = scipy.stats.beta.rvs(self.alphaA, self.betaA, size=1)[0] # sample distribution A
+        phiB = scipy.stats.beta.rvs(self.alphaB, self.betaB, size=1)[0] # sample distribution B
+        
+        # apply rule according to probability theory
+        phiRes = phiA*phiB # intersection
+
+        #print(f'phiA={phiA}  phiB={phiB}    phiRes={phiRes}') # DBG
+        
+        # store sample
+        self.distr.putSample(phiRes)
+	
+    def sampleNtimes(self, n):
+        for it in range(n):
+            self.sampleAndStore()
+
+
+
+
+
+
+
+
+#########
+
 
 
 class FittingTarget(object):
@@ -113,6 +197,23 @@ class FittingTarget(object):
         #self.alphaB, self.betaB = calcAlphaAndBetaFromMeanAndStdDev(0.5, 0.063)
 
         pass
+        
+        self.targetDistr = None # target distribution
+    
+    # calculate the distribution
+    #
+    # should be called after changing the beta disstributions
+    def calcDistribution(self):
+        self.targetDistr = CalcDistribution()
+        self.targetDistr.alphaA = self.alphaA
+        self.targetDistr.betaA = self.betaA
+        self.targetDistr.alphaB = self.alphaB
+        self.targetDistr.betaB = self.betaB
+        self.targetDistr.init()
+        
+        nSamples = 12000 # 8000
+        
+        self.targetDistr.sampleNtimes(nSamples)
 
     #def calcErrorSum(self, fittingCurrentlyMean, fittingCurrentlyStdDev):
     def calcErrorSum(self, fittingCurrentlyMode, fittingCurrentlyConf):
@@ -122,7 +223,7 @@ class FittingTarget(object):
 
         #fittingCurrentlyAlpha, fittingCurrentlyBeta = calcAlphaAndBetaFromMeanAndStdDev(fittingCurrentlyMean, fittingCurrentlyStdDev)
 
-
+        """ commented because old code which did combine the input distributions directly
         errorSum = 0.0
 
         # sampling / integration
@@ -166,9 +267,39 @@ class FittingTarget(object):
 
             x += 0.1
             nSamplesCnt += 1
-
+		"""
+        
+        
+        errorSum = 0.0
+        nSamplesCnt = 0
+        
+        approxDistr = self.targetDistr.distr.calcDistribution()
+        
+        for itBucketIdx in range(len(approxDistr)):
+            phi = itBucketIdx / (len(approxDistr) - 1)  + (1.0 / len(approxDistr))*0.5
+            
+            #print(f'phi={phi}') # DBG
+            
+            phiTarget = scipy.stats.beta.pdf(phi, fittingCurrentlyAlpha, fittingCurrentlyBeta)
+            
+            phiApprox = approxDistr[itBucketIdx]
+            
+            # new attempt with loss based on KL-divergence
+            errorVal = calcKlDivergenceSingle(phiTarget, phiApprox)
+            
+            if errorVal == float("inf") or math.isnan(errorVal):
+                continue # we skip it!
+            
+            #print(phiApprox)
+            
+            #print(f'errorVal={errorVal}') # DBG
+            
+            errorSum += errorVal
+            nSamplesCnt += 1
+        
+        
         errorSum /= nSamplesCnt # divide by number of samples
-
+        
         return errorSum
 
 
@@ -192,6 +323,9 @@ def calcResult(stvA, stvB, startMode = 0.5):
 
 
     fittingTarget.init()
+    
+    # update the distribution
+    fittingTarget.calcDistribution()
 
 
     # for curve fitting
@@ -219,7 +353,7 @@ def calcResult(stvA, stvB, startMode = 0.5):
 
 
     # iterations for approximation
-    nIterations =  100 # 100
+    nIterations =  200 # 100
 
 
     for fittingType in [None]: # ['mode', 'stdDev']:
@@ -235,7 +369,7 @@ def calcResult(stvA, stvB, startMode = 0.5):
             ###    fittingCurrentlyStdDev = fittingCurrentlyStdDev + rng.uniform(-1.0, 1.0)*0.01
             
             # mixed optimization
-            fittingCurrentlyMode = fittingCurrentlyMode + rng.uniform(-1.0, 1.0) * 0.05 #*0.1
+            fittingCurrentlyMode = fittingCurrentlyMode + rng.uniform(-1.0, 1.0) * 0.005 #*0.01
             
             fittingCurrentlyConf = fittingCurrentlyConf + rng.uniform(-1.0, 1.0)*0.01
 
@@ -247,7 +381,7 @@ def calcResult(stvA, stvB, startMode = 0.5):
 
             if False:
                 print('')
-                print(f'mean={fittingCurrentlyMode} stdDev={fittingCurrentlyStdDev}')
+                #print(f'mean={fittingCurrentlyMode} stdDev={fittingCurrentlyStdDev}')
                 print(f'errorSum={errorSum}')
 
             if errorSum < fittingBestErrorSum:
@@ -269,6 +403,16 @@ def calcResult(stvA, stvB, startMode = 0.5):
         'errorSum': fittingBestErrorSum
     }
 
+
+
+
+# manual test
+if False:
+    startMode = 0.25
+    res0 = calcResult((0.5, 0.9), (0.5, 0.9), startMode)
+    print(res0) # result should be 0.25
+
+    exit(0)
 
 
 # manual test
@@ -331,8 +475,16 @@ for confA in arrConfOptions:
                 
                 stvA = (strengthA, confA)
                 stvB = (strengthB, confB)
+                
+                # start mode 0.5 is "unbiased"
+                startMode = 0.5
+                
+                # set the startMode to A*B to bias the search toward the correct result
+                #
+                # this depends on the approximated truth-function!!!
+                startMode = strengthA*strengthB
 
-                res0 = calcResult(stvA, stvB)
+                res0 = calcResult(stvA, stvB, startMode)
                 stvResultStrength, stvResultConf = res0['stv']
 
                 strThisDatapoint = f'    dat.append(([{stvA[0]}, {1.0-stvA[0]}, {stvA[1]}, {stvB[0]}, {1.0-stvB[0]}, {stvB[1]}], [{stvResultStrength}, {stvResultConf}]))'
@@ -345,4 +497,5 @@ for confA in arrConfOptions:
 f = open('trainingdat0.py', 'w')
 f.write(strTrainingDat)
 f.close()
+
 
