@@ -23,6 +23,7 @@ def calcKlDivergenceSingle(p, q):
     # HACK to avoid numerical error
     if h == 0.0:
         return math.nan
+    
 
     return p*math.log(h)
 
@@ -288,6 +289,7 @@ class FittingTarget(object):
             errorVal = calcKlDivergenceSingle(phiTarget, phiApprox)
             
             if errorVal == float("inf") or math.isnan(errorVal):
+            #if math.isnan(errorVal):
                 continue # we skip it!
             
             #print(phiApprox)
@@ -297,6 +299,8 @@ class FittingTarget(object):
             errorSum += errorVal
             nSamplesCnt += 1
         
+        if nSamplesCnt == 0:
+            return math.inf
         
         errorSum /= nSamplesCnt # divide by number of samples
         
