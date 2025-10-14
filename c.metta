@@ -19,7 +19,7 @@
 
 
 !(println! "")
-!(println! "result should be ideally 0.5   A")
+!(println! "result should be ideally 0.25   A")
 
 
 !(println! (calcTruthNn_conj 0.1 0.8  0.9 0.8))
@@ -27,7 +27,7 @@
 
 
 !(println! "")
-!(println! "result should be ideally 0.5   B")
+!(println! "result should be ideally 0.25   B")
 
 !(println! (calcTruthNn_conj 0.02 0.8  0.98 0.8))
 !(println! (calcTruthNn_conj 0.98 0.8  0.02 0.8))
