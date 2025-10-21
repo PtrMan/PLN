@@ -158,6 +158,8 @@ class CalcDistribution(object):
         # beta distribution B
         self.alphaB = 1.0
         self.betaB = 1.0
+        
+        self.rawSamples = [] # raw samples as they got sampled
     
     def init(self):
         self.distr = BucketedDistribution()
@@ -175,6 +177,10 @@ class CalcDistribution(object):
         
         # store sample
         self.distr.putSample(phiRes)
+        
+        # store into raw array
+        self.rawSamples.append(phiRes)
+        
 	
     def sampleNtimes(self, n):
         for it in range(n):
@@ -330,6 +336,76 @@ def calcResult(stvA, stvB, startMode = 0.5):
     
     # update the distribution
     fittingTarget.calcDistribution()
+    
+    
+    
+    fittingStrategy = "method-of-moments"
+    fittingStrategy = "approximation"
+    
+    
+    if fittingStrategy == "method-of-moments":
+        # parameter estimation : method of moments
+        #
+        # see https://en.wikipedia.org/wiki/Beta_distribution "Method of moments"
+        
+        # * calculate normalized distribution
+        #phis = fittingTarget.targetDistr.distr.calcDistribution() # is this wrong?
+        #phis = fittingTarget.targetDistr.distr.buckets # wrong
+        samples = fittingTarget.targetDistr.rawSamples
+        
+        print(samples)
+        
+        # * calculate sample mean
+        sampleMean = (1.0 / len(samples)) * sum(samples)
+        
+        # * calculate variance
+        accuHelper = 0.0
+        for iv in samples:
+            diffHelper = iv - sampleMean
+            accuHelper += (diffHelper*diffHelper)
+        
+        sampleVar = (1.0 / (len(samples) - 1)) * accuHelper
+        
+        
+        # HACK HACK HACK
+        #sampleMean = 0.5
+        #sampleVar = 0.07
+        
+        
+        
+        print(f"sampleMean = {sampleMean}") # DBG
+        print(f"sampleVar  = {sampleVar}") # DBG
+        
+        
+        condValLeftside = sampleVar
+        condValRightside = sampleMean * (1.0 - sampleMean)
+        print(f"{condValLeftside} < {condValRightside}")
+        
+        # now we put "sampleMean" and "var" into the formula of the method-of-moments estimate
+        helperInner = (sampleMean*(1.0 - sampleMean))/sampleVar
+        
+        alphaRoof = sampleMean * ( helperInner - 1.0 )
+        
+        betaRoof = (1.0 - sampleMean) * ( helperInner - 1.0 )
+        
+        
+        print("")
+        print(f"alphaRoof = {alphaRoof}")
+        print(f"betaRoof  = {betaRoof}")
+        
+        
+        # ! ! ! ! ! ! STV from these alphaRoof and betaRoof taken as alpha and beta doesn't make any sense!!"!!!!
+        raise "TODO : how to get from alphaRoof and betaRoof to alpha and beta"
+        
+        
+        stv = convAlphaBetaToStv(alpha, beta)
+        
+        return {
+            'stv': stv,
+            'errorSum': 0.0
+        }
+    
+    
 
 
     # for curve fitting
@@ -360,7 +436,7 @@ def calcResult(stvA, stvB, startMode = 0.5):
     nIterations =  200 # 100
 
 
-    for fittingType in [None]: # ['mode', 'stdDev']:
+    for fittingType in ['mode', 'mixed']: # ['mode', 'stdDev', 'mixed']:
 
         currentIt = 0
         while currentIt < nIterations:
@@ -372,10 +448,23 @@ def calcResult(stvA, stvB, startMode = 0.5):
             ###else: # else we are fitting stdDev
             ###    fittingCurrentlyStdDev = fittingCurrentlyStdDev + rng.uniform(-1.0, 1.0)*0.01
             
-            # mixed optimization
-            fittingCurrentlyMode = fittingCurrentlyMode + rng.uniform(-1.0, 1.0) * 0.005 #*0.01
+            enFittingMode = False
+            enFittingStddev = False
             
-            fittingCurrentlyConf = fittingCurrentlyConf + rng.uniform(-1.0, 1.0)*0.01
+            if fittingType == 'mode':
+                enFittingMode = True
+            elif fittingType == 'stdDev':
+                enFittingStddev = True
+            elif fittingType == 'mixed':
+                enFittingMode = True
+                enFittingStddev = True
+            
+            
+            if enFittingMode:
+                fittingCurrentlyMode = fittingCurrentlyMode + rng.uniform(-1.0, 1.0) * 0.005 #*0.01
+            
+            if enFittingStddev:
+                fittingCurrentlyConf = fittingCurrentlyConf + rng.uniform(-1.0, 1.0)*0.01
 
 
             fittingCurrentlyMode = clamp(fittingCurrentlyMode, 0.0+1e-4, 1.0-1e-4)
