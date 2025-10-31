@@ -340,7 +340,7 @@ def calcResult(stvA, stvB, startMode = 0.5):
     
     
     fittingStrategy = "method-of-moments"
-    fittingStrategy = "approximation"
+    #fittingStrategy = "approximation"
     
     
     if fittingStrategy == "method-of-moments":
@@ -353,7 +353,7 @@ def calcResult(stvA, stvB, startMode = 0.5):
         #phis = fittingTarget.targetDistr.distr.buckets # wrong
         samples = fittingTarget.targetDistr.rawSamples
         
-        print(samples)
+        #print(samples)
         
         # * calculate sample mean
         sampleMean = (1.0 / len(samples)) * sum(samples)
@@ -379,7 +379,7 @@ def calcResult(stvA, stvB, startMode = 0.5):
         
         condValLeftside = sampleVar
         condValRightside = sampleMean * (1.0 - sampleMean)
-        print(f"{condValLeftside} < {condValRightside}")
+        #print(f"{condValLeftside} < {condValRightside}")
         
         # now we put "sampleMean" and "var" into the formula of the method-of-moments estimate
         helperInner = (sampleMean*(1.0 - sampleMean))/sampleVar
@@ -389,16 +389,20 @@ def calcResult(stvA, stvB, startMode = 0.5):
         betaRoof = (1.0 - sampleMean) * ( helperInner - 1.0 )
         
         
+        # HACK
+        alphaRoof = max(alphaRoof, 1.0+1e-4)
+        
+        
         print("")
         print(f"alphaRoof = {alphaRoof}")
         print(f"betaRoof  = {betaRoof}")
         
         
         # ! ! ! ! ! ! STV from these alphaRoof and betaRoof taken as alpha and beta doesn't make any sense!!"!!!!
-        raise "TODO : how to get from alphaRoof and betaRoof to alpha and beta"
+        #raise "TODO : how to get from alphaRoof and betaRoof to alpha and beta"
         
         
-        stv = convAlphaBetaToStv(alpha, beta)
+        stv = convAlphaBetaToStv(alphaRoof, betaRoof)
         
         return {
             'stv': stv,
