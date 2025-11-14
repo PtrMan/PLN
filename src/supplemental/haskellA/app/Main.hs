@@ -100,7 +100,7 @@ convFloatToInt x = truncate x
 --   ) 
 --   ** n
 
-
+{-
 calcMatpr :: Int -> Double -> Double -> Double -> Double
 calcMatpr n pa pb x =
     let
@@ -108,7 +108,7 @@ calcMatpr n pa pb x =
         termMulB = ( ( pa**pa    * pb**pb  * (1.0 - pa)**(1.0-pa) * (1.0 - pb)**(1.0-pb) )   /     ( (pa - x)**(pa - x) * (pb - x)**(pb-x) * x**x * (x - pb - pa + 1.0)**(x - pb - pa + 1.0) )  )   ** (convIntToFloat n)   :: Double 
     
     in termMulA * termMulB
-
+-}
 
 
 
@@ -137,15 +137,15 @@ findIndexByCumulative distr selVal =
 
 
 
--- type for tuple of probability of premise A and probability of premise B
-data ProbABType =
-    ProbAB Double Double
+-- type for tuple of probability of premise A and probability of premise B  and probability of uniform distr AB
+data ProbTupleType =
+    ProbTuple Double Double Double
     deriving (Show, Eq)
 
 
 
--- processes the pairs of (PA, PB) and aggregates the distributions to one distribution
-processPairsToAggregatedDistr :: [ProbABType] -> [Double]
+-- processes the pairs of (PA, PB, PAB) and aggregates the distributions to one distribution
+processPairsToAggregatedDistr :: [ProbTupleType] -> [Double]
 processPairsToAggregatedDistr pairs = runST $ do
     
     
@@ -160,7 +160,7 @@ processPairsToAggregatedDistr pairs = runST $ do
     
     
 
-    forM_ pairs $ \(ProbAB pa pb) -> do
+    forM_ pairs $ \(ProbTuple pA pB pAb) -> do
         
         {- code for using stirling distribution
         -- compute distribution for this sample  (pa pb)
@@ -176,11 +176,29 @@ processPairsToAggregatedDistr pairs = runST $ do
             writeArray arrDistrC idx (a + b)
         -}
         
+        
+        {-
         -- put sample directly into conclusion distribution without bernoilli/stirling
         let conclPhi = pa * pb
         let idxWrite = convFloatToInt ( conclPhi * (convIntToFloat (nBuckets - 1) ) )
         valAtIdx <- readArray arrDistrC idxWrite
         writeArray arrDistrC idxWrite (valAtIdx + 1.0) -- put sample
+        -}
+        
+        
+        
+        -- condition
+        -- see https://github.com/ngeiswei/tv-toolbox/tree/beta-product-xp
+        
+        let boundLower = max (pA+pB-1.0) 0.0
+        let boundUpper = min pA pB
+        
+        let conclPhi   = boundLower + (boundUpper-boundLower)*pAb
+        
+        let idxWrite = convFloatToInt ( conclPhi * (convIntToFloat (nBuckets - 1) ) )
+        valAtIdx <- readArray arrDistrC idxWrite
+        writeArray arrDistrC idxWrite (valAtIdx + 1.0) -- put sample
+    
     
     getElems arrDistrC
 
@@ -203,6 +221,14 @@ convToPythonArray :: [Double] -> String
 convToPythonArray xs =
     "[" ++ (concat . intersperse ", " . map show) xs ++ "]"
 
+
+
+
+-- convert from distr with sum 1.0 to normalized PDF distribution
+convNormalizedDistrToPdfDistr :: [Double] -> [Double]
+convNormalizedDistrToPdfDistr arr =
+	-- TODO TODO TODO
+	arr
 
 
 
@@ -239,34 +265,44 @@ z2 = do
     
     
     
-    -- case with high concl.conf and concl.strength ~ 0.5*0.5
+    -- naive result: case with high concl.conf and concl.strength ~ 0.5*0.5
     --let stvPremiseA = Stv 0.5 0.89
     --let stvPremiseB = Stv 0.5 0.89
     
-    -- gives result where  concl.strength  is almost  a.strength*b.strength
-    --let stvPremiseA = Stv 0.7 0.98
-    --let stvPremiseB = Stv 0.7 0.98
+    -- naive result: gives result where  concl.strength  is almost  a.strength*b.strength
+    let stvPremiseA = Stv 0.7 0.98
+    let stvPremiseB = Stv 0.7 0.98
+    
+    -- naive result: case with to high uncorrected conf
+    --let stvPremiseA = Stv 0.2 0.89
+    --let stvPremiseB = Stv 0.2 0.89
+    
+    -- naive result: case with to high conf even with correction
+    -- fixed with new XP variant!
+    --let stvPremiseA = Stv 0.95 0.89
+    --let stvPremiseB = Stv 0.95 0.89
     
     
-    -- interesting conclusion
+    
+    -- naive result: interesting conclusion
     --let stvPremiseA = Stv 0.5 0.29
     --let stvPremiseB = Stv 0.7 0.39
     
-    -- gives uncertain conclusion which is skewed towards 0.0
-    let stvPremiseA = Stv 0.7 0.98
-    let stvPremiseB = Stv 0.7 0.2
+    -- naive result: gives uncertain conclusion which is skewed towards 0.0
+    --let stvPremiseA = Stv 0.7 0.98
+    --let stvPremiseB = Stv 0.7 0.2
     
     
 
-    -- case when concl.conf > min( a.conf, b.conf )
+    -- naive result: case when concl.conf > min( a.conf, b.conf )
     --let stvPremiseA = Stv 0.98 0.89
     --let stvPremiseB = Stv 0.98 0.89
     
-    -- case when conf of concl is to low
+    -- naive result: case when conf of concl is to low
     --let stvPremiseA = Stv 0.2 0.7
     --let stvPremiseB = Stv 0.2 0.7
     
-    -- case when conf of concl is to low
+    -- naive result: case when conf of concl is to low
     --let stvPremiseA = Stv 0.5 0.3
     --let stvPremiseB = Stv 0.5 0.3
     
@@ -275,7 +311,7 @@ z2 = do
     --let stvPremiseB = Stv 0.2 0.9
     -- concl  Stv 1.859179797190865e-2 0.9509574018435561
     
-    -- case when conf of concl is to low
+    -- naive result: case when conf of concl is to low
     --let stvPremiseA = Stv 0.2 0.7
     --let stvPremiseB = Stv 0.2 0.7
     -- concl Stv (-2.212187522538186e-2) 0.8458145557750192
@@ -301,7 +337,8 @@ z2 = do
         --phiB <- genContVar (betaDistr 15.3 5.9) gen
         phiA <- genContVar (betaDistr premiseAAlpha premiseABeta) gen
         phiB <- genContVar (betaDistr premiseBAlpha premiseBBeta) gen
-        return (ProbAB phiA phiB)
+        phiAb <- uniform gen
+        return (ProbTuple phiA phiB phiAb)
 
     -- DBG
     --print pairs
@@ -319,7 +356,8 @@ z2 = do
     --print strA
     
     -- generate python code to plot distribution
-    writePythonPlot distrConcl
+    let distrConclAsPdf = convNormalizedDistrToPdfDistr distrConcl
+    writePythonPlot distrConclAsPdf
     
     
     let nSamplesOfConcl = 10000
@@ -404,3 +442,33 @@ main = do
     return ()
     
 
+
+{-
+-- calculate Nil's new version of the TVfn 
+calcBetaProductXp :: Double -> Double -> IO ()
+calcBetaProductXp pA pB = do
+	
+	
+	gen <- createSystemRandom
+	
+	-- loop to find pAb which satisfies the constraint
+	let loop currentA = do
+         
+		-- sample pAb from beta(1.0, 1.0)
+		pAb <- genContVar (betaDistr 1.0 1.0) gen
+	
+	
+		-- check for condition
+		-- see https://github.com/ngeiswei/tv-toolbox/tree/beta-product-xp
+	
+		let constraint = max (pA+pB+1.0) 0.0 <= pAb && pAb <= min pA pB
+	
+		if constraint
+			then return pAb
+			else do
+				loop 0
+	
+	let pAb = loop 0
+	
+	return pAb
+-}
