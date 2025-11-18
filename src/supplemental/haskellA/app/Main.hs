@@ -195,9 +195,15 @@ processPairsToAggregatedDistr pairs = runST $ do
         
         let conclPhi   = boundLower + (boundUpper-boundLower)*pAb
         
-        let idxWrite = convFloatToInt ( conclPhi * (convIntToFloat (nBuckets - 1) ) )
-        valAtIdx <- readArray arrDistrC idxWrite
-        writeArray arrDistrC idxWrite (valAtIdx + 1.0) -- put sample
+
+        if (boundLower <= pAb && pAb <= boundUpper) --  || True
+        	then do
+                let idxWrite = convFloatToInt ( conclPhi * (convIntToFloat (nBuckets - 1) ) )
+                valAtIdx <- readArray arrDistrC idxWrite
+                writeArray arrDistrC idxWrite (valAtIdx + 1.0) -- put sample
+            else 
+                return ()
+        
     
     
     getElems arrDistrC
@@ -261,11 +267,12 @@ writePythonPlot arr = do
 z2 :: IO ()
 z2 = do
     
-    let nSamplesPerPair = 35501
+    let nSamplesPerPair = 175501
     
-    
+
     
     -- naive result: case with high concl.conf and concl.strength ~ 0.5*0.5
+    -- result with XP with bound using sampling in constraint: not in bayes prior!!!!!
     --let stvPremiseA = Stv 0.5 0.89
     --let stvPremiseB = Stv 0.5 0.89
     
@@ -274,6 +281,7 @@ z2 = do
     let stvPremiseB = Stv 0.7 0.98
     
     -- naive result: case with to high uncorrected conf
+    -- result with XP with bound using sampling in constraint: not in bayes prior!!!!!
     --let stvPremiseA = Stv 0.2 0.89
     --let stvPremiseB = Stv 0.2 0.89
     
@@ -282,19 +290,24 @@ z2 = do
     --let stvPremiseA = Stv 0.95 0.89
     --let stvPremiseB = Stv 0.95 0.89
     
+    -- result with XP with bound using sampling in constraint:  WRONG strength!!!
+    --     probably to few samples
+    --let stvPremiseA = Stv 0.5 0.95
+    --let stvPremiseB = Stv 0.5 0.95
     
     
-    -- naive result: interesting conclusion
-    --let stvPremiseA = Stv 0.5 0.29
-    --let stvPremiseB = Stv 0.7 0.39
+    
+    
     
     -- naive result: gives uncertain conclusion which is skewed towards 0.0
+    -- result with XP with bound using sampling in constraint: fine
     --let stvPremiseA = Stv 0.7 0.98
     --let stvPremiseB = Stv 0.7 0.2
     
     
 
     -- naive result: case when concl.conf > min( a.conf, b.conf )
+    -- result with XP with bound using sampling in constraint: fine
     --let stvPremiseA = Stv 0.98 0.89
     --let stvPremiseB = Stv 0.98 0.89
     
@@ -307,21 +320,33 @@ z2 = do
     --let stvPremiseB = Stv 0.5 0.3
     
     --
+    -- result with XP with bound using sampling in constraint: not in bayes prior!!!!!
     --let stvPremiseA = Stv 0.2 0.9
     --let stvPremiseB = Stv 0.2 0.9
-    -- concl  Stv 1.859179797190865e-2 0.9509574018435561
     
     -- naive result: case when conf of concl is to low
     --let stvPremiseA = Stv 0.2 0.7
     --let stvPremiseB = Stv 0.2 0.7
-    -- concl Stv (-2.212187522538186e-2) 0.8458145557750192
     
-    -- ?
+    
+    -- result with XP with bound using sampling in constraint: not in bayes prior!!!!!
     --let stvPremiseA = Stv 0.5 0.9
     --let stvPremiseB = Stv 0.9 0.5
     
-    --let stvPremiseA = Stv 0.5 0.95
-    --let stvPremiseB = Stv 0.5 0.95
+
+    
+    
+    
+    
+    -- naive result: interesting conclusion
+    -- result with XP with sampling in bound: NOT IN BAYES PRIOR
+    --let stvPremiseA = Stv 0.5 0.29
+    --let stvPremiseB = Stv 0.7 0.39
+
+    
+    
+    
+    
     
     let (premiseAAlpha, premiseABeta) = convStvToAlphaBeta stvPremiseA
     let (premiseBAlpha, premiseBBeta) = convStvToAlphaBeta stvPremiseB
@@ -389,44 +414,69 @@ z2 = do
         alphaRoof = sampleMean * (helperInner - 1.0)
         betaRoof  = (1.0 - sampleMean) * (helperInner - 1.0)
     
+    let
+        isMethodOfMomentsConstraintFullfilled = sampleVar < sampleMean*(1.0 - sampleMean)
+    
     print ""
     print "sample mean    sample variance"
     print (sampleMean, sampleVar)
     
-    print ""
-    print "estimated alpha and beta:"
-    print (alphaRoof, betaRoof)
+    print "method-of-moments: constraint(sample mean, sample variance) fullfilled:"
+    print isMethodOfMomentsConstraintFullfilled
+    
+    if isMethodOfMomentsConstraintFullfilled then do
+        
+        print ""
+        print "estimated alpha and beta:"
+        print (alphaRoof, betaRoof)
+        
+        -- check for distribution in bayes prior
+        if alphaRoof >= 1.0 && betaRoof >= 1.0 then do
+        
+            print ""
+            
+            -- * convert alpha and beta to STV
+            let stvConclBeforeCorrection = convAlphaBetaToStv (alphaRoof, betaRoof)
+            
+            print stvConclBeforeCorrection
+            
+            
+            -- * correct evidence
+            let (Stv conclStrengthBeforeCorrection conclConfBeforeCorrection) = stvConclBeforeCorrection
+            let weightBeforeCorrection = convCtoW conclConfBeforeCorrection
+            
+            let (Stv premiseAStrength _) = stvPremiseA
+            let (Stv premiseBStrength _) = stvPremiseB
+            let weightCorrectionFactor = premiseAStrength*premiseBStrength
+            
+            let weightAfterCorrection = weightBeforeCorrection * weightCorrectionFactor
+            let conclConfAfterCorrection = convWtoC weightAfterCorrection
+            let stvConclAfterCorrection = Stv conclStrengthBeforeCorrection conclConfAfterCorrection
+            let stvConcl = stvConclAfterCorrection
+            
+            
+            
+            print stvConcl 
+            
+            -- we need to check if the parameterization of the beta distribution is a valid bayes prior
+            let conclIsValid = checkIsAlphaBetaValidBayesPrior (convStvToAlphaBeta stvConcl)
+            
+            print "conclIsValid="
+            print conclIsValid
+            
+            
+            return ()
+        
+        else do
+            print "parameters of beta distr are not in bayes prior!"
+            return ()
     
     
-    -- * convert alpha and beta to STV
-    let stvConclBeforeCorrection = convAlphaBetaToStv (alphaRoof, betaRoof)
     
-    print stvConclBeforeCorrection
+    else do
+        return ()
+
     
-    
-    -- * correct evidence
-    let (Stv conclStrengthBeforeCorrection conclConfBeforeCorrection) = stvConclBeforeCorrection
-    let weightBeforeCorrection = convCtoW conclConfBeforeCorrection
-    
-    let (Stv premiseAStrength _) = stvPremiseA
-    let (Stv premiseBStrength _) = stvPremiseB
-    let weightCorrectionFactor = premiseAStrength*premiseBStrength
-    
-    let weightAfterCorrection = weightBeforeCorrection * weightCorrectionFactor
-    let conclConfAfterCorrection = convWtoC weightAfterCorrection
-    let stvConclAfterCorrection = Stv conclStrengthBeforeCorrection conclConfAfterCorrection
-    let stvConcl = stvConclAfterCorrection
-    
-    print stvConcl 
-    
-    -- we need to check if the parameterization of the beta distribution is a valid bayes prior
-    let conclIsValid = checkIsAlphaBetaValidBayesPrior (convStvToAlphaBeta stvConcl)
-    
-    print "conclIsValid="
-    print conclIsValid
-    
-    
-    return ()
     
     
 
